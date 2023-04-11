@@ -1,0 +1,61 @@
+EsGeBe Bounce - Our first prod as Vollversion Trio! Made and released @ Revision 2023
+
+-----
+How to Run:
+
+The real deal:
+1. Get a PAL SNES with a Super Gameboy 1. (According to others at the party, SGB2 and NTSC hardware might work too, but run slightly fast)
+2. Load the ROM onto a flashcart and run it
+
+Emulator:
+1. Get a emulator that can fully emulate SGB (Not just border and palettes, full emulation). I recommend Mesen2.
+2. Legally aquire a SGB1 bios ROM and put it in your firmware folder.
+3. Set your emulator to PAL and force SGB
+4. Load the ROM
+-----
+
+This demonstrate that you can take over the SNES from within a Gameboy cart running on the Super Game Boy adapter cart. This is a party hack, so the code is awful and janky. So if you want to learn how to do this, please don't attempt to disasm it, just contact BinaryCounter on Pouet, Discord, Twitter (pick your poison). If I get around to it, I'll release the cleaned up source somewhere down the line.
+
+The music was first prototyped in FL Studio by Sebb. He used a SPC file of the credits theme hidden in the SGB BIOS and imported that in C700VST, to play around with the instruments available in the BIOS. (You can replace these if you have the memory).
+Livvy94 then hand-transcribed and arranged the tune to N-SPC format by ear, referencing the MIDI from the FL project. 
+
+The demo is 3922 bytes total, but honestly, we could probably pack it down much more.
+-----
+
+The Super Gameboy adapter has a full gameboy inside and a custom IC that facilitates communication between the SNES and GB. 
+It converts the LCD signals from the GB into 2bpp tiles that the SNES can then DMA into its memory pretty quickly. 
+It also has two way asnyc communication using the joypad registers in the GB. This is used to (of course) transfer joypad input from the SNES controller to the GB, but also used to set up a command interface, allowing the GB cart to request special things, like palette changes or custom borders. Some of the commands require a little more data than you can cram through the limited interface, and these commands use the GB VRAM and LCD signal to quickly transfer a lot of data (up to ~5k each frame).
+
+A lot of games made use of these features, but the command interface can do so much more. Interesting in particular are SOU_TRN, DATA_TRN and JUMP. These allow you to upload code into the SNES ARAM, SNES WRAM and jump the SNES PC away from the BIOS running on the SGB and start running your own code.
+While running your own code you have full access to the SNES hardware, including the BIOS rom, which you can extract some assets from if you're low on memory ;). The SGB communication registers and protocol is full documented, and you can maintain communication while running your code and fetch more data from the GB side if you want.
+The GB CPU and sound continue to run alongside the SNES counterparts, so you could have 12 channel total polyphony if you want.
+
+Only one game (Space Invaders) made full use of these commands, so this is proper obscure! Make some demos on it!
+
+For audio, we opted to use the N-SPC driver that comes preloaded on the SGB. It also comes with some cheesy instruments. The sequence data format is a bit weird. Best way to edit it would be to grab a SPC file of the credits theme hidden in the BIOS and edit that in EbMusEd (which is a tracker for Earthbound music, but recently started supporting generic N-SPC tunes). But, Ebmused currently assembles the song differently than the original, so you can't just diff it with the credits SPC and include that in your ROM. You'll have to replace the pattern table in the original location. Here's some pointers (literally).
+
+$2BAF is the start of the pattern table in the credits SPC. The table ends with two zero bytes
+$3100 is the start of the table as exported from ebmused. 
+Pattern channel tables start right after that, and note data starts after that and ends with a row of zero bytes
+All you need to do is put the pattern table from $3100 to $2BAF. If you have any loop points in your tune, it'll be signified in the pattern table by $FF00 followed by a pointer to the address in your table where the loop should end up. You'll need to adjust that too, or your song will crash when looping. If you're not looping, $0000 ends the tune.
+When you upload your data it has to be in SBN format, which is just a simple container format telling the SNES where to insert your data in ARAM.
+If you want to play your tune, you got to either use the SOUND command, or write $01 to $2140 on the SNES side, to instruct N-SPC to song 1, which is normally the credits theme.
+
+For SNES WRAM stuff, standard SNES dev things apply. What i ended up doing (probably not the best solution) is to build a normal SNES rom with all WRAM code in a seperate ROM bank which i can easily extract. Set your .org to $7F0000 or whereever you plan to put your code in WRAM. Make sure to include the code of any library you want to use, if they have routines for e.g DMA. I didn't, because of size concerns.
+-----
+Resources used:
+
+LibSFX (SNES build env): https://github.com/Optiroc/libSFX
+gb-starter-kit (GB build env, i heavily stripped this down): https://github.com/ISSOtm/gb-starter-kit
+Pandocs (Best GB docs + SGB commands): https://gbdev.io/pandocs
+FullSNES (Best SNES docs + SGB registers): https://problemkaputt.de/fullsnes.htm
+65816 Reference (SNES instruction set): https://wiki.superfamicom.org/65816-reference
+EbMusEd (Earthbound / N-SPC editor): https://github.com/PKHackers/ebmused
+N-SPC Docs: https://sneslab.net/wiki/N-SPC_Engine#Communication_with_the_SNES
+Description of SBN format: https://github.com/LuigiBlood/SBN2SPC/blob/main/README.md
+Mesen2 (Multisystem emulator, debugger): https://github.com/SourMesen/Mesen2
+-----
+See you next year! Vollversion, always voll, always toll.
+
+
+
